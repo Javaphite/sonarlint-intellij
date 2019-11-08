@@ -26,98 +26,119 @@ import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import icons.SonarLintIcons;
-import javax.annotation.Nonnull;
-import javax.swing.Icon;
 import org.sonarlint.intellij.issue.LiveIssue;
 import org.sonarlint.intellij.ui.tree.TreeCellRenderer;
 import org.sonarlint.intellij.util.CompoundIcon;
 import org.sonarlint.intellij.util.SonarLintUtils;
 import org.sonarsource.sonarlint.core.client.api.util.DateUtils;
 
+import javax.annotation.Nonnull;
+import javax.swing.*;
 import java.util.Locale;
 
 import static com.intellij.ui.SimpleTextAttributes.STYLE_SMALLER;
 
 public class IssueNode extends AbstractNode {
-  // not available in IJ15
-  private static final SimpleTextAttributes GRAYED_SMALL_ATTRIBUTES = new SimpleTextAttributes(STYLE_SMALLER, UIUtil.getInactiveTextColor());
 
-  private final LiveIssue issue;
+    // not available in IJ15
+    private static final SimpleTextAttributes GRAYED_SMALL_ATTRIBUTES = new SimpleTextAttributes(STYLE_SMALLER, UIUtil.getInactiveTextColor());
 
-  public IssueNode(LiveIssue issue) {
-    this.issue = issue;
-  }
+    private final LiveIssue issue;
 
-  @Override public void render(TreeCellRenderer renderer) {
-    String severity = StringUtil.capitalize(issue.getSeverity().toLowerCase(Locale.ENGLISH));
-    String type = issue.getType();
-
-    if (type != null) {
-      String typeStr = type.replace('_', ' ').toLowerCase(Locale.ENGLISH);
-      renderer.setIconToolTip(severity + " " + typeStr);
-      int gap = JBUI.isHiDPI() ? 8 : 4;
-      setIcon(renderer, new CompoundIcon(CompoundIcon.Axis.X_AXIS, gap, SonarLintIcons.type12(type), SonarLintIcons.severity12(severity)));
-    } else {
-      renderer.setIconToolTip(severity);
-      setIcon(renderer, SonarLintIcons.severity12(severity));
+    public IssueNode(LiveIssue issue) {
+        this.issue = issue;
     }
 
-    renderer.append(issueCoordinates(issue), SimpleTextAttributes.GRAY_ATTRIBUTES);
 
-    if (issue.isValid()) {
-      renderer.setToolTipText("Double click to open location");
-      renderer.append(issue.getMessage());
-    } else {
-      renderer.setToolTipText("Issue is no longer valid");
-      renderer.append(issue.getMessage(), SimpleTextAttributes.GRAY_ATTRIBUTES);
+    @Override
+    public void render(TreeCellRenderer renderer) {
+        String severity = StringUtil.capitalize(issue.getSeverity().toLowerCase(Locale.ENGLISH));
+        String type = issue.getType();
+
+        if (type != null) {
+            String typeStr = type.replace('_', ' ').toLowerCase(Locale.ENGLISH);
+            renderer.setIconToolTip(severity + " " + typeStr);
+            int gap = JBUI.isHiDPI() ? 8 : 4;
+            setIcon(renderer, new CompoundIcon(CompoundIcon.Axis.X_AXIS, gap, SonarLintIcons.type12(type), SonarLintIcons.severity12(severity)));
+        } else {
+            renderer.setIconToolTip(severity);
+            setIcon(renderer, SonarLintIcons.severity12(severity));
+        }
+
+        renderer.append(issueCoordinates(issue), SimpleTextAttributes.GRAY_ATTRIBUTES);
+
+        if (issue.isValid()) {
+            renderer.setToolTipText("Double click to open location");
+            renderer.append(issue.getMessage());
+        } else {
+            renderer.setToolTipText("Issue is no longer valid");
+            renderer.append(issue.getMessage(), SimpleTextAttributes.GRAY_ATTRIBUTES);
+        }
+
+
+        if (!issue.flows().isEmpty()) {
+            int numLocations = issue.flows().stream().mapToInt(f -> f.locations().size()).sum();
+            String flows = String.format(" [+%d %s]", numLocations, SonarLintUtils.pluralize("location", numLocations));
+            renderer.append(flows, GRAYED_SMALL_ATTRIBUTES);
+        }
+
+        if (issue.getCreationDate() != null) {
+            renderer.append(" ");
+            String creationDate = DateUtils.toAge(issue.getCreationDate());
+            renderer.append(creationDate, SimpleTextAttributes.GRAY_ATTRIBUTES);
+        }
     }
 
-    if (!issue.flows().isEmpty()) {
-      int numLocations = issue.flows().stream().mapToInt(f -> f.locations().size()).sum();
-      String flows = String.format(" [+%d %s]", numLocations, SonarLintUtils.pluralize("location", numLocations));
-      renderer.append(flows, GRAYED_SMALL_ATTRIBUTES);
+    private void setIcon(TreeCellRenderer renderer, Icon icon) {
+        if (issue.isValid()) {
+            renderer.setIcon(icon);
+        } else {
+            renderer.setIcon(SonarLintIcons.toDisabled(icon));
+        }
     }
 
-    if (issue.getCreationDate() != null) {
-      renderer.append(" ");
-      String creationDate = DateUtils.toAge(issue.getCreationDate());
-      renderer.append(creationDate, SimpleTextAttributes.GRAY_ATTRIBUTES);
-    }
-  }
-
-  private void setIcon(TreeCellRenderer renderer, Icon icon) {
-    if (issue.isValid()) {
-      renderer.setIcon(icon);
-    } else {
-      renderer.setIcon(SonarLintIcons.toDisabled(icon));
-    }
-  }
-
-  @Override public int getIssueCount() {
-    return 1;
-  }
-
-  @Override public int getFileCount() {
-    return 0;
-  }
-
-  public LiveIssue issue() {
-    return issue;
-  }
-
-  private static String issueCoordinates(@Nonnull LiveIssue issue) {
-    RangeMarker range = issue.getRange();
-    if (range == null) {
-      return "(0, 0) ";
+    @Override
+    public int getIssueCount() {
+        return 1;
     }
 
-    if (!issue.isValid()) {
-      return "(-, -) ";
+    @Override
+    public int getFileCount() {
+        return 0;
     }
 
-    Document doc = range.getDocument();
-    int line = doc.getLineNumber(range.getStartOffset());
-    int offset = range.getStartOffset() - doc.getLineStartOffset(line);
-    return String.format("(%d, %d) ", line + 1, offset);
-  }
+    public LiveIssue issue() {
+        return issue;
+    }
+
+    private static String issueCoordinates(@Nonnull LiveIssue issue) {
+        RangeMarker range = issue.getRange();
+        if (range == null) {
+            return "(0, 0) ";
+        }
+
+        if (!issue.isValid()) {
+            return "(-, -) ";
+        }
+
+        Document doc = range.getDocument();
+        int line = doc.getLineNumber(range.getStartOffset());
+        int offset = range.getStartOffset() - doc.getLineStartOffset(line);
+        return String.format("(%d, %d) ", line + 1, offset);
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder(50)
+                .append("   \u21B3 ")
+                .append(issue.getType())
+                .append("   ")
+                .append(issue.getSeverity())
+                .append("   ")
+                .append(issueCoordinates(issue))
+                .append(issue.getRuleName())
+                .append(" : ")
+                .append(issue.getMessage())
+                .toString();
+    }
 }

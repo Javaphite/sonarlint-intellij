@@ -56,13 +56,21 @@ public class FileNode extends AbstractNode {
     renderer.append(file.getName());
 
     LOGGER.assertTrue(getIssueCount() > 0);
-    String issues;
 
+    renderer.append(getIssuesCountStringExpression(), SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
+  }
+
+  @Override public String toString() {
+    return "> " + file.getName() + getIssuesCountStringExpression();
+  }
+
+  private String getIssuesCountStringExpression() {
+    String issues;
     if (getIssueCount() > 1) {
       issues = " issues)";
     } else {
       issues = " issue)";
     }
-    renderer.append(spaceAndThinSpace() + "(" + getIssueCount() + issues, SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES);
+    return spaceAndThinSpace() + '(' + getIssueCount() + issues;
   }
 }

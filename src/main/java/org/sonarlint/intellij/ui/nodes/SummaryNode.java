@@ -47,4 +47,8 @@ public class SummaryNode extends AbstractNode {
   @Override public void render(TreeCellRenderer renderer) {
     renderer.append(getText());
   }
+
+  @Override public String toString() {
+    return getText();
+  }
 }
